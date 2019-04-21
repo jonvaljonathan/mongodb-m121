@@ -1,0 +1,51 @@
+db.movies.aggregate([
+    {$match: {'awards': /(?=.*Won)(?=.*Oscar)/}},
+    {$group: {
+        _id: null,
+        "highest_rating": {$max: "$imdb.rating"},
+        "lowest_rating": {$min: "$imdb.rating"},
+        "average_rating": {$avg: "$imdb.rating"},
+        "deviation": {$stdDevSamp: "$imdb.rating"}
+    }
+    }
+])
+
+db.movies.aggregate([
+    {$match: {'languages': 'English'}},
+    {$project: {"cast": 1, "title": 1, "average":"$imdb.rating", _id: 0}},
+    {$unwind: { 
+        path:"$cast"
+        }
+    },
+    {$group: { 
+        _id: "$cast",
+        num_films: {$sum: 1},
+        average: {$avg: "$average"}
+        }   
+    },
+    {$sort: {num_films:-1}}        
+])
+
+
+db.air_routes.aggregate([
+    {$match: { $or: [{"airplane": "747"}, {"airplane":"380"}]}},
+    {$project: {airline: "$airline.name", "airplane": 1, _id:0 }},
+    {$lookup: {
+        from: "air_alliances",
+        localField: "airline",
+        foreignField: "airlines",
+        as: "alliance"
+    }},
+    {$project: {
+        "airline": 1, 
+        "airplane": 1, 
+        "alliance": {$arrayElemAt: ["$alliance.name", 0]}
+        }
+    },
+    {$group: {
+        _id: '$alliance',
+        num_flights: {$sum: 1}
+        } 
+    },
+    {$sort: {num_flight: -1}}
+])
